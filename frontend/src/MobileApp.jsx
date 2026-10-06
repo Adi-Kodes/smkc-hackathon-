@@ -1,18 +1,44 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Menu, Camera, CheckCircle2, ChevronRight, Home, CheckSquare, 
-  FileText, User, ArrowLeft, MapPin, Clock, Upload, Check, RefreshCw
+  FileText, User, ArrowLeft, MapPin, Clock, Upload, Check, RefreshCw, LogOut
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import { SOCKET_BASE_URL } from './config';
 
 const MobileApp = () => {
   const [activeTab, setActiveTab] = useState('home');
-  const [attendanceMarked, setAttendanceMarked] = useState(true);
-  const [uploadedPhotos, setUploadedPhotos] = useState([
-    'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600&auto=format&fit=crop&q=60'
-  ]);
+  const [attendanceMarked, setAttendanceMarked] = useState(false);
+  const [uploadedPhotos, setUploadedPhotos] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
+  const [user, setUser] = useState(null);
   const fileInputRef = useRef(null);
+  const socketRef = useRef(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    const userData = JSON.parse(localStorage.getItem('user'));
+    setUser(userData);
+
+    socketRef.current = io(SOCKET_BASE_URL);
+    
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -38,6 +64,15 @@ const MobileApp = () => {
     const randomPhoto = samplePhotos[Math.floor(Math.random() * samplePhotos.length)];
     setUploadedPhotos(prev => [randomPhoto, ...prev]);
     showToast('📸 जिओ-टॅग व वेळेच्या ठशासह नवीन पुरावा जोडला!');
+
+    if (socketRef.current) {
+      socketRef.current.emit('workerUpdateTask', {
+        id: '104',
+        photoUrl: randomPhoto,
+        workerName: user?.name || 'Worker',
+        timestamp: new Date().toLocaleTimeString()
+      });
+    }
   };
 
   return (
@@ -61,9 +96,14 @@ const MobileApp = () => {
               <ArrowLeft size={22} />
             </Link>
             <div className="mobile-corp-name">सांगली मिरज कुपवाड महानगरपालिका</div>
-            <Menu size={22} style={{ cursor: 'pointer' }} />
+            <button onClick={handleLogout} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>
+              <LogOut size={20} />
+            </button>
           </div>
-          <h1 className="mobile-logo-title">फिल्ड सेतू</h1>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <h1 className="mobile-logo-title">फिल्ड सेतू</h1>
+            <span style={{color: '#d1ead4', fontSize: '13px', fontWeight: 'bold'}}>नमस्ते, {user?.name || "कामगार"}</span>
+          </div>
         </header>
 
         {/* Scrollable Content */}

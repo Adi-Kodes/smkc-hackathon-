@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Menu, Search, Bell, Home, CheckCircle, Users, AlertTriangle, 
   FileText, Settings, Camera, MapPin, Clock, Check, X, Smartphone, 
-  ChevronRight, ShieldAlert, CheckCircle2
+  ChevronRight, ShieldAlert, CheckCircle2, LogOut
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import { API_BASE_URL, SOCKET_BASE_URL } from './config';
 
 const initialTasks = [
   {
@@ -91,6 +93,61 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('home');
   const [toastMessage, setToastMessage] = useState('');
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Auth Check
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    // Socket.io Real-time connection
+    const socket = io(SOCKET_BASE_URL);
+    
+    socket.on('connect', () => {
+      console.log('Real-time connected');
+    });
+
+    socket.on('taskUpdated', (updatedTask) => {
+      // Example of handling real-time update
+      showToast(`नवीन अपडेट: काम #${updatedTask.id} मध्ये बदल झाला आहे!`);
+    });
+
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'));
+      setUser(userData);
+      
+      // Fetch Real Tasks from API
+      fetch(`${API_BASE_URL}/api/tasks`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        // If DB has tasks, we would map them here. 
+        // For now, if empty, we keep initialTasks so the UI doesn't look blank.
+        if (data.tasks && data.tasks.length > 0) {
+          // setTasks(data.tasks); 
+        }
+      })
+      .catch(err => console.error("Error fetching tasks:", err));
+    } catch (e) {
+      navigate('/login');
+    }
+
+    // Cleanup socket on unmount
+    return () => {
+      socket.disconnect();
+    };
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -235,13 +292,21 @@ const Dashboard = () => {
             <div className="header-profile-box">
               <img 
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" 
-                alt="एस. पी. पवार" 
+                alt={user?.name || "User"} 
                 className="header-avatar"
               />
               <div>
-                <div className="header-profile-name">एस. पी. पवार</div>
-                <div className="header-profile-role">पर्यवेक्षक</div>
+                <div className="header-profile-name">{user?.name || "लोड होत आहे..."}</div>
+                <div className="header-profile-role">{user?.role === 'supervisor' ? 'पर्यवेक्षक' : 'कामगार'}</div>
               </div>
+              <button 
+                onClick={handleLogout} 
+                className="ml-4 flex items-center justify-center p-2 rounded-full hover:bg-[rgba(255,255,255,0.2)] transition-colors text-white" 
+                title="Logout"
+                style={{ marginLeft: '12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'white' }}
+              >
+                <LogOut size={18} />
+              </button>
             </div>
           </div>
         </header>
