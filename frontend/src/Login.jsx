@@ -22,10 +22,19 @@ const Login = () => {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      let data = {};
+
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        throw new Error(
+          `Backend returned ${response.status} (${response.statusText || 'HTML'}). Target URL: ${API_BASE_URL}/api/login. Please verify your backend is active.`
+        );
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data.error || `Login failed (${response.status})`);
       }
 
       // Store token and user data
