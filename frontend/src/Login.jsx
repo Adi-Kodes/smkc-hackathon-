@@ -16,10 +16,13 @@ const Login = () => {
     setLoading(true);
 
     try {
+      const cleanUser = username.trim();
+      const cleanPass = password.trim();
+
       const response = await fetch(`${API_BASE_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
       });
 
       const contentType = response.headers.get('content-type') || '';
@@ -116,8 +119,27 @@ const Login = () => {
           </button>
         </form>
         
-        <div className="mt-6 text-center text-xs text-gray-500">
-          <p>Demo accounts: supervisor1 / worker1 (password: password123)</p>
+        <div className="mt-6 pt-5 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-500 text-center mb-3">Quick Demo Auto-Fill:</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => { setUsername('supervisor1'); setPassword('password123'); }}
+              className="py-2 px-3 text-xs bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 hover:bg-emerald-100 font-medium transition-colors cursor-pointer"
+            >
+              👤 Supervisor
+            </button>
+            <button
+              type="button"
+              onClick={() => { setUsername('worker1'); setPassword('password123'); }}
+              className="py-2 px-3 text-xs bg-blue-50 text-blue-800 rounded-lg border border-blue-200 hover:bg-blue-100 font-medium transition-colors cursor-pointer"
+            >
+              👷 Worker
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-400 text-center mt-3">
+            Password: <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-700">password123</code>
+          </p>
         </div>
       </div>
     </div>

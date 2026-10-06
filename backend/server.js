@@ -99,16 +99,19 @@ app.get('/api/health', (req, res) => {
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
 
-  if (!username || !password) {
+  const cleanUsername = (username || '').trim().toLowerCase();
+  const cleanPassword = (password || '').trim();
+
+  if (!cleanUsername || !cleanPassword) {
     return res.status(400).json({ error: 'Username and password are required' });
   }
 
-  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
+  db.get('SELECT * FROM users WHERE LOWER(username) = ?', [cleanUsername], async (err, user) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
     try {
-      const isMatch = await bcrypt.compare(password, user.password);
+      const isMatch = await bcrypt.compare(cleanPassword, user.password);
       if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
 
       const token = jwt.sign(
